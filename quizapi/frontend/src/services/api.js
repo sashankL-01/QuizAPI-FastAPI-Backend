@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// Base API configuration
-const API_BASE_URL = '/api';
-
+// Base API configuration - pointing to FastAPI backend
+const API_BASE_URL = 'http://localhost:8000/api';
 
 // Create axios instance with default configuration
 const api = axios.create({

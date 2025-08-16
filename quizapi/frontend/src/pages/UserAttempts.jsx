@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Award, TrendingUp, Eye } from 'lucide-react';
+import { Calendar, Clock, Award, Eye, Filter } from 'lucide-react';
 import { quizService } from '../services/quizService';
 import toast from 'react-hot-toast';
 
@@ -8,6 +8,7 @@ const UserAttempts = () => {
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, passed, failed
+  const [scoreFilter, setScoreFilter] = useState(''); // filter by score percentage
 
   useEffect(() => {
     fetchUserAttempts();
@@ -34,17 +35,23 @@ const UserAttempts = () => {
     return 'text-red-600 bg-red-100';
   };
 
+  const formatTime = (seconds) => {
+    if (!seconds) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const filteredAttempts = attempts.filter(attempt => {
-    if (filter === 'passed') return attempt.score >= 60;
-    if (filter === 'failed') return attempt.score < 60;
+    // Filter by pass/fail status
+    if (filter === 'passed' && attempt.score < 60) return false;
+    if (filter === 'failed' && attempt.score >= 60) return false;
+
+    // Filter by score percentage
+    if (scoreFilter && attempt.score < parseFloat(scoreFilter)) return false;
+
     return true;
   });
-
-  const stats = {
-    total: attempts.length,
-    passed: attempts.filter(a => a.score >= 60).length,
-    averageScore: attempts.length > 0 ? Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length) : 0
-  };
 
   if (loading) {
     return (
@@ -61,84 +68,71 @@ const UserAttempts = () => {
         <p className="text-gray-600 mt-2">Track your quiz performance and progress</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Calendar className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Attempts</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-          </div>
-        </div>
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <Filter className="h-5 w-5 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Filter by:</span>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Award className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Passed</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.passed}</p>
-            </div>
+            {/* Status Filter */}
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Attempts</option>
+              <option value="passed">Passed (≥60%)</option>
+              <option value="failed">Failed (&lt;60%)</option>
+            </select>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Average Score</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.averageScore}%</p>
-            </div>
+          {/* Score Filter */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Score above:</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              placeholder="Enter %"
+              value={scoreFilter}
+              onChange={(e) => setScoreFilter(e.target.value)}
+              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-600">%</span>
+            {scoreFilter && (
+              <button
+                onClick={() => setScoreFilter('')}
+                className="text-xs text-blue-600 hover:text-blue-700"
+              >
+                Clear
+              </button>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Filter Buttons */}
-      <div className="mb-6">
-        <div className="flex space-x-4">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            All Attempts
-          </button>
-          <button
-            onClick={() => setFilter('passed')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === 'passed'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Passed
-          </button>
-          <button
-            onClick={() => setFilter('failed')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === 'failed'
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Failed
-          </button>
         </div>
       </div>
 
       {/* Attempts List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {filteredAttempts.length > 0 ? (
+      {filteredAttempts.length === 0 ? (
+        <div className="text-center py-12">
+          <Award className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {attempts.length === 0 ? 'No quiz attempts yet' : 'No attempts match your filters'}
+          </h3>
+          <p className="text-gray-600 mb-4">
+            {attempts.length === 0
+              ? 'Take your first quiz to see your results here.'
+              : 'Try adjusting your filters to see more results.'}
+          </p>
+          <Link
+            to="/quizzes"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+          >
+            Browse Quizzes
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -155,7 +149,7 @@ const UserAttempts = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -165,34 +159,30 @@ const UserAttempts = () => {
                   <tr key={attempt.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {attempt.quiz_title}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {attempt.quiz_description?.substring(0, 60)}...
+                        Quiz #{attempt.quiz_id}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(
-                          attempt.score
-                        )}`}
-                      >
-                        {Math.round(attempt.score)}%
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColor(attempt.score)}`}>
+                        {attempt.score.toFixed(1)}%
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
-                        {attempt.time_taken ? `${Math.round(attempt.time_taken / 60)}m` : 'N/A'}
+                        {formatTime(attempt.time_taken)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(attempt.completed_at).toLocaleDateString()}
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {new Date(attempt.completed_at).toLocaleDateString()}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <Link
                         to={`/quiz/${attempt.quiz_id}/results/${attempt.id}`}
-                        className="text-blue-600 hover:text-blue-900 flex items-center justify-end"
+                        className="inline-flex items-center text-blue-600 hover:text-blue-700"
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View Results
@@ -203,26 +193,8 @@ const UserAttempts = () => {
               </tbody>
             </table>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {filter === 'all' ? 'No attempts yet' : `No ${filter} attempts`}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {filter === 'all'
-                ? 'Start taking quizzes to see your progress here'
-                : `You haven't ${filter} any quizzes yet`}
-            </p>
-            <Link
-              to="/quizzes"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-200"
-            >
-              Browse Quizzes
-            </Link>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

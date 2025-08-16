@@ -12,9 +12,16 @@ const QuizDetail = () => {
 
   const fetchQuizDetail = useCallback(async () => {
     try {
-      const quizData = await quizService.getQuizById(id)
-      setQuiz(quizData)
+      const result = await quizService.getQuizById(id)
+
+      if (result.success) {
+        setQuiz(result.data)
+      } else {
+        toast.error(result.error || 'Failed to load quiz details')
+        navigate('/quizzes')
+      }
     } catch (error) {
+      console.error('Error fetching quiz:', error)
       toast.error('Failed to load quiz details')
       navigate('/quizzes')
     } finally {
@@ -79,7 +86,7 @@ const QuizDetail = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Questions</p>
-                <p className="text-2xl font-bold text-gray-900">{quiz.question_count || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{quiz.questions?.length || 0}</p>
               </div>
             </div>
 
@@ -108,43 +115,25 @@ const QuizDetail = () => {
             </div>
           </div>
 
-          {/* Quiz Instructions */}
+          {/* Quiz Description */}
           <div className="mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Instructions</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">About This Quiz</h3>
             <div className="bg-gray-50 rounded-lg p-6">
-              <ul className="space-y-2 text-gray-700">
-                <li>• Read each question carefully before selecting your answer</li>
-                <li>• You can change your answers before submitting</li>
-                {quiz.time_limit && (
-                  <li>• You have {quiz.time_limit} minutes to complete this quiz</li>
-                )}
-                <li>• Once submitted, you cannot retake this quiz</li>
-                <li>• Your results will be available immediately after submission</li>
-              </ul>
+              <p className="text-gray-700 leading-relaxed">
+                {quiz.description || 'No description available for this quiz.'}
+              </p>
             </div>
           </div>
 
           {/* Start Quiz Button */}
           <div className="text-center">
-            {quiz.is_active ? (
-              <button
-                onClick={handleStartQuiz}
-                className="inline-flex items-center px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition duration-200"
-              >
-                <Play className="h-6 w-6 mr-3" />
-                Start Quiz
-              </button>
-            ) : (
-              <div className="text-center">
-                <p className="text-red-600 font-medium mb-4">This quiz is currently inactive</p>
-                <Link
-                  to="/quizzes"
-                  className="inline-flex items-center px-6 py-3 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition duration-200"
-                >
-                  Browse Other Quizzes
-                </Link>
-              </div>
-            )}
+            <button
+              onClick={handleStartQuiz}
+              className="inline-flex items-center px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition duration-200"
+            >
+              <Play className="h-6 w-6 mr-3" />
+              Continue to Quiz
+            </button>
           </div>
         </div>
       </div>

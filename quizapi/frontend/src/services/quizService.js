@@ -44,10 +44,13 @@ class QuizService {
   async submitQuizAttempt(quizId, answers) {
     try {
       const response = await api.post(`/quizzes/${quizId}/submit`, {
-        answers: answers
+        quiz_id: quizId,
+        answers: answers,
+        time_taken: null // You can add time tracking later if needed
       });
       return { success: true, data: response.data };
     } catch (error) {
+      console.error('Quiz submission error:', error);
       return {
         success: false,
         error: error.response?.data?.detail || 'Failed to submit quiz'
@@ -140,5 +143,5 @@ class QuizService {
 }
 
 const quizService = new QuizService();
-export { quizService as default };
+export default quizService;
 export { quizService };

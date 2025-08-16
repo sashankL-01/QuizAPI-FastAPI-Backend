@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Clock, Users, ChevronRight } from 'lucide-react';
-import api from '../services/api';
+import { quizService } from '../services/quizService';
 import toast from 'react-hot-toast';
 
 const QuizList = () => {
@@ -15,18 +15,26 @@ const QuizList = () => {
 
   const fetchQuizzes = async () => {
     try {
-      const response = await api.get('/quizzes');
-      setQuizzes(response.data);
+      const result = await quizService.getAllQuizzes();
+
+      if (result.success) {
+        setQuizzes(result.data || []);
+      } else {
+        toast.error(result.error || 'Failed to load quizzes');
+        setQuizzes([]);
+      }
     } catch (error) {
+      console.error('Error fetching quizzes:', error);
       toast.error('Failed to load quizzes');
+      setQuizzes([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredQuizzes = quizzes.filter(quiz =>
-    quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quiz.description.toLowerCase().includes(searchTerm.toLowerCase())
+    quiz.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quiz.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -59,53 +67,60 @@ const QuizList = () => {
 
       {/* Quiz Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredQuizzes.map((quiz) => (
-          <div key={quiz.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
-            <div className="p-6">
-              <div className="flex items-center mb-4">
-                <BookOpen className="h-6 w-6 text-blue-600 mr-2" />
-                <h3 className="text-xl font-semibold text-gray-900 truncate">
-                  {quiz.title}
-                </h3>
-              </div>
+        {filteredQuizzes.map((quiz) => {
+          const quizId = quiz.id || quiz._id;
+          const questionCount = quiz.questions?.length || 0;
 
-              <p className="text-gray-600 mb-4 line-clamp-3">
-                {quiz.description}
-              </p>
-
-              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  <span>{quiz.time_limit || 'No limit'}</span>
+          return (
+            <div
+              key={quizId}
+              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+            >
+              <div className="p-6">
+                <div className="flex items-center mb-4">
+                  <BookOpen className="h-6 w-6 text-blue-600 mr-2" />
+                  <h3 className="text-xl font-semibold text-gray-900 truncate">
+                    {quiz.title}
+                  </h3>
                 </div>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1" />
-                  <span>{quiz.question_count || 0} questions</span>
+
+                <p className="text-gray-600 mb-4 line-clamp-3">
+                  {quiz.description}
+                </p>
+
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    <span>{quiz.time_limit ? `${quiz.time_limit} min` : 'No limit'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1" />
+                    <span>{questionCount} questions</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  quiz.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {quiz.is_active ? 'Active' : 'Inactive'}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    quiz.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                    quiz.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    quiz.difficulty === 'hard' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {quiz.difficulty ? quiz.difficulty.charAt(0).toUpperCase() + quiz.difficulty.slice(1) : 'Medium'}
+                  </span>
 
-                {quiz.is_active && (
                   <Link
-                    to={`/quiz/${quiz.id}`}
+                    to={`/quiz/${quizId}`}
                     className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition duration-200"
                   >
-                    View Quiz
+                    Take Quiz
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Link>
-                )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {filteredQuizzes.length === 0 && !loading && (
