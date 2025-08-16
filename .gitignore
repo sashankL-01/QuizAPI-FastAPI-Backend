@@ -96,3 +96,5 @@ todo.txt
 tests/
 
 node_modules/
+
+create_sample_quizzes.py

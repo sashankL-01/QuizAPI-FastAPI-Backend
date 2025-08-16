@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 @router.get("/me", response_model=user.User)
-async def get_current_user_profile(current_user: user.User = Depends(get_current_user)):  # Get current user's profile
+async def get_current_user_profile(current_user: user.User = Depends(get_current_user)):
     return current_user
 
 @router.put("/me", response_model=user.User)
@@ -24,7 +24,7 @@ async def update_current_user(
     user_update: user.UserUpdate,
     current_user: user.User = Depends(get_current_active_user),
     db: AsyncIOMotorClient = Depends(get_db)
-):   # Update current user's profile
+):
     update_data = user_update.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No update data provided")
@@ -42,7 +42,7 @@ async def update_current_user(
 async def get_user_attempts(
     current_user: user.User = Depends(get_current_active_user),
     db: AsyncIOMotorClient = Depends(get_db)
-):   # Get current user's quiz attempts
+):
     attempts = await db.attempts.find({"user_id": current_user.id}).sort("attempt_date", -1).to_list(1000)
     for attempt_doc in attempts:
         attempt_doc["_id"] = str(attempt_doc["_id"])
@@ -54,11 +54,10 @@ async def get_user_attempts(
 async def get_user_stats(
     current_user: user.User = Depends(get_current_active_user),
     db: AsyncIOMotorClient = Depends(get_db)
-):  # Get current user's statistics
+):
     user_doc = await db.users.find_one({"_id": ObjectId(current_user.id)})
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
-    # Get recent attempts for detailed stats
     recent_attempts = await db.attempts.find(
         {"user_id": current_user.id}
     ).sort("attempt_date", -1).limit(10).to_list(10)
@@ -77,7 +76,7 @@ async def get_user_stats(
 async def update_last_login(
     current_user: user.User = Depends(get_current_user),
     db: AsyncIOMotorClient = Depends(get_db)
-):  # Update user's last login timestamp
+):
     result = await db.users.update_one(
         {"_id": ObjectId(current_user.id)},
         {"$set": {"last_login": datetime.now(timezone.utc)}}
@@ -90,10 +89,68 @@ async def update_last_login(
 async def delete_current_user(
     current_user: user.User = Depends(get_current_active_user),
     db: AsyncIOMotorClient = Depends(get_db)
-):   # Delete (deactivate) current user's account
+):
     result = await db.users.update_one(
         {"_id": ObjectId(current_user.id)},
         {"$set": {"is_active": False, "deleted_at": datetime.now(timezone.utc)}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
+
+@router.get("/dashboard")
+async def get_user_dashboard(
+    current_user: user.User = Depends(get_current_active_user),
+    db: AsyncIOMotorClient = Depends(get_db)
+):
+    user_id = current_user.id
+
+    user_doc = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    total_quizzes = await db.quizzes.count_documents({})
+
+    user_attempts = await db.attempts.find({"user_id": user_id}).sort("completed_at", -1).to_list(1000)
+
+    total_attempts = len(user_attempts)
+    completed_quizzes = len(set(attempt["quiz_id"] for attempt in user_attempts))
+
+    total_minutes = sum(attempt.get("time_taken", 0) for attempt in user_attempts) / 60
+
+    avg_score = sum(attempt["score"] for attempt in user_attempts) / total_attempts if total_attempts > 0 else 0
+
+    recent_attempts = user_attempts[:10]
+    for attempt in recent_attempts:
+        attempt["_id"] = str(attempt["_id"])
+        if "completed_at" in attempt and attempt["completed_at"]:
+            if isinstance(attempt["completed_at"], str):
+                pass
+            else:
+                attempt["completed_at"] = attempt["completed_at"].isoformat()
+
+    timeline_data = []
+    for attempt in user_attempts:
+        completed_at = attempt.get("completed_at")
+        if completed_at:
+            date_str = completed_at if isinstance(completed_at, str) else completed_at.isoformat()
+            timeline_data.append({
+                "date": date_str,
+                "score": attempt["score"],
+                "quiz_title": attempt.get("quiz_title", "Unknown Quiz")
+            })
+
+    timeline_data.sort(key=lambda x: x["date"])
+
+    website_views = 1500
+
+    return {
+        "totalQuizzes": total_quizzes,
+        "completedQuizzes": completed_quizzes,
+        "totalAttempts": total_attempts,
+        "totalMinutes": round(total_minutes, 2),
+        "averageScore": round(avg_score, 2),
+        "lastLogin": user_doc.get("last_login").isoformat() if user_doc.get("last_login") else None,
+        "recentAttempts": recent_attempts,
+        "scoreTimeline": timeline_data,
+        "websiteViews": website_views
+    }

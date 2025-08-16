@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Clock, Users, ChevronRight } from 'lucide-react';
+import { BookOpen, Clock, Users, ChevronRight, Search, Filter } from 'lucide-react';
 import { quizService } from '../services/quizService';
 import toast from 'react-hot-toast';
 
@@ -8,6 +8,10 @@ const QuizList = () => {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalQuizzes, setTotalQuizzes] = useState(0);
+  const quizzesPerPage = 30;
 
   useEffect(() => {
     fetchQuizzes();
@@ -19,6 +23,7 @@ const QuizList = () => {
 
       if (result.success) {
         setQuizzes(result.data || []);
+        setTotalQuizzes(result.data?.length || 0);
       } else {
         toast.error(result.error || 'Failed to load quizzes');
         setQuizzes([]);
@@ -32,10 +37,17 @@ const QuizList = () => {
     }
   };
 
-  const filteredQuizzes = quizzes.filter(quiz =>
-    quiz.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quiz.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQuizzes = quizzes.filter(quiz => {
+    const matchesSearch = quiz.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quiz.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDifficulty = difficultyFilter === 'all' || quiz.difficulty === difficultyFilter;
+    return matchesSearch && matchesDifficulty;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredQuizzes.length / quizzesPerPage);
+  const startIndex = (currentPage - 1) * quizzesPerPage;
+  const displayedQuizzes = filteredQuizzes.slice(startIndex, startIndex + quizzesPerPage);
 
   if (loading) {
     return (
@@ -50,24 +62,54 @@ const QuizList = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Available Quizzes</h1>
         <p className="text-gray-600 mt-2">
-          Test your knowledge with our collection of quizzes
+          Test your knowledge with our collection of quizzes • Showing top 30 results
         </p>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Search quizzes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <Search className="h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search quizzes..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page on search
+              }}
+              className="flex-1 min-w-64 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <span className="text-sm text-gray-600">Difficulty:</span>
+            <select
+              value={difficultyFilter}
+              onChange={(e) => {
+                setDifficultyFilter(e.target.value);
+                setCurrentPage(1); // Reset to first page on filter
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Levels</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-4 text-sm text-gray-500">
+          Showing {displayedQuizzes.length} of {filteredQuizzes.length} quizzes
+        </div>
       </div>
 
       {/* Quiz Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredQuizzes.map((quiz) => {
+        {displayedQuizzes.map((quiz) => {
           const quizId = quiz.id || quiz._id;
           const questionCount = quiz.questions?.length || 0;
 
@@ -123,12 +165,52 @@ const QuizList = () => {
         })}
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center">
+          <nav className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+
+            {[...Array(totalPages)].map((_, index) => {
+              const page = index + 1;
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </nav>
+        </div>
+      )}
+
       {filteredQuizzes.length === 0 && !loading && (
         <div className="text-center py-12">
           <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No quizzes found</h3>
           <p className="text-gray-600">
-            {searchTerm ? 'Try adjusting your search terms.' : 'Check back later for new quizzes.'}
+            {searchTerm || difficultyFilter !== 'all' ? 'Try adjusting your search terms or filters.' : 'Check back later for new quizzes.'}
           </p>
         </div>
       )}

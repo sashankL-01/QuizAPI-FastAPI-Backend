@@ -9,7 +9,6 @@ import AdminRoute from './components/AdminRoute.jsx';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import Profile from './pages/Profile.jsx';
 import QuizList from './pages/QuizList.jsx';
 import QuizDetail from './pages/QuizDetail.jsx';
@@ -47,15 +46,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
+          {/* Dashboard redirects to Home now */}
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
+
           {/* Protected routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
           <Route
             path="/profile"
             element={

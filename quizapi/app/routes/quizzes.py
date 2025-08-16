@@ -11,7 +11,6 @@ router = APIRouter()
 @router.get("/quizzes/", response_model=List[schemas.Quiz])
 async def get_quizzes(db: AsyncIOMotorClient = Depends(get_db)):
     quizzes = await db.quizzes.find().to_list(1000)
-    # Convert ObjectId to string
     for quiz in quizzes:
         quiz["_id"] = str(quiz["_id"])
     return quizzes
@@ -25,6 +24,5 @@ async def get_quiz(quiz_id: str, db: AsyncIOMotorClient = Depends(get_db)):
     if quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
-    # Convert ObjectId to string
     quiz["_id"] = str(quiz["_id"])
     return quiz

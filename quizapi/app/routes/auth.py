@@ -17,9 +17,7 @@ async def register_user(
     user_data: user_schemas.UserCreate,
     db: AsyncIOMotorClient = Depends(get_db)
 ):
-    """Register a new user"""
     try:
-        # Check if user already exists
         existing_user = await db.users.find_one({"email": user_data.email})
         if existing_user:
             raise HTTPException(
@@ -27,10 +25,8 @@ async def register_user(
                 detail="Email already registered"
             )
 
-        # Hash password
         hashed_password = jwt_handler.hash_password(user_data.password)
 
-        # Create user document
         user_doc = {
             "email": user_data.email,
             "full_name": user_data.full_name,
@@ -44,10 +40,8 @@ async def register_user(
             "average_score": 0.0
         }
 
-        # Insert user
         result = await db.users.insert_one(user_doc)
 
-        # Return success response
         return {
             "message": "User registered successfully",
             "user_id": str(result.inserted_id),
@@ -67,9 +61,7 @@ async def login_user(
     login_data: auth_schemas.LoginRequest,
     db: AsyncIOMotorClient = Depends(get_db)
 ):
-    """Authenticate user and return JWT tokens"""
     try:
-        # Find user by email
         user = await db.users.find_one({"email": login_data.email})
         if not user:
             raise HTTPException(
@@ -77,27 +69,23 @@ async def login_user(
                 detail="Invalid email or password"
             )
 
-        # Verify password
         if not jwt_handler.verify_password(login_data.password, user["hashed_password"]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
 
-        # Check if user is active
         if not user.get("is_active", True):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is disabled"
             )
 
-        # Update last login
         await db.users.update_one(
             {"_id": user["_id"]},
             {"$set": {"last_login": datetime.now(timezone.utc)}}
         )
 
-        # Create tokens
         user_id = str(user["_id"])
         token_data = {
             "sub": user_id,
@@ -108,7 +96,6 @@ async def login_user(
         access_token = jwt_handler.create_access_token(token_data)
         refresh_token = jwt_handler.create_refresh_token({"sub": user_id})
 
-        # Prepare user data for response
         user_response = {
             "id": user_id,
             "email": user["email"],

@@ -6,9 +6,13 @@ import toast from 'react-hot-toast';
 
 const UserAttempts = () => {
   const [attempts, setAttempts] = useState([]);
+  const [quizzes, setQuizzes] = useState({}); // Store quiz details by ID
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, passed, failed
   const [scoreFilter, setScoreFilter] = useState(''); // filter by score percentage
+  const [scoreFilterType, setScoreFilterType] = useState('above'); // above or below
+  const [currentPage, setCurrentPage] = useState(1);
+  const attemptsPerPage = 20;
 
   useEffect(() => {
     fetchUserAttempts();
@@ -19,10 +23,27 @@ const UserAttempts = () => {
       const response = await quizService.getUserAttempts();
       if (response.success) {
         setAttempts(response.data);
+
+        // Fetch quiz details for each unique quiz_id
+        const uniqueQuizIds = [...new Set(response.data.map(attempt => attempt.quiz_id))];
+        const quizPromises = uniqueQuizIds.map(async (quizId) => {
+          const quizResult = await quizService.getQuizById(quizId);
+          return { quizId, quiz: quizResult.success ? quizResult.data : null };
+        });
+
+        const quizResults = await Promise.all(quizPromises);
+        const quizMap = {};
+        quizResults.forEach(({ quizId, quiz }) => {
+          if (quiz) {
+            quizMap[quizId] = quiz;
+          }
+        });
+        setQuizzes(quizMap);
       } else {
         toast.error('Failed to load attempts');
       }
     } catch (error) {
+      console.error('Error fetching attempts:', error);
       toast.error('Failed to load attempts');
     } finally {
       setLoading(false);
@@ -48,10 +69,19 @@ const UserAttempts = () => {
     if (filter === 'failed' && attempt.score >= 60) return false;
 
     // Filter by score percentage
-    if (scoreFilter && attempt.score < parseFloat(scoreFilter)) return false;
+    if (scoreFilter) {
+      const scoreValue = parseFloat(scoreFilter);
+      if (scoreFilterType === 'above' && attempt.score <= scoreValue) return false;
+      if (scoreFilterType === 'below' && attempt.score >= scoreValue) return false;
+    }
 
     return true;
   });
+
+  // Pagination logic
+  const totalAttempts = filteredAttempts.length;
+  const totalPages = Math.ceil(totalAttempts / attemptsPerPage);
+  const paginatedAttempts = filteredAttempts.slice((currentPage - 1) * attemptsPerPage, currentPage * attemptsPerPage);
 
   if (loading) {
     return (
@@ -89,7 +119,15 @@ const UserAttempts = () => {
 
           {/* Score Filter */}
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Score above:</span>
+            <span className="text-sm text-gray-600">Score:</span>
+            <select
+              value={scoreFilterType}
+              onChange={(e) => setScoreFilterType(e.target.value)}
+              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="above">Above</option>
+              <option value="below">Below</option>
+            </select>
             <input
               type="number"
               min="0"
@@ -155,44 +193,100 @@ const UserAttempts = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAttempts.map((attempt) => (
-                  <tr key={attempt.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        Quiz #{attempt.quiz_id}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColor(attempt.score)}`}>
-                        {attempt.score.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {formatTime(attempt.time_taken)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {new Date(attempt.completed_at).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link
-                        to={`/quiz/${attempt.quiz_id}/results/${attempt.id}`}
-                        className="inline-flex items-center text-blue-600 hover:text-blue-700"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Results
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {paginatedAttempts.map((attempt) => {
+                  const quiz = quizzes[attempt.quiz_id];
+                  return (
+                    <tr key={attempt.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">
+                          {quiz ? (
+                            <Link
+                              to={`/quiz/${attempt.quiz_id}`}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {quiz.title}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-gray-900">Quiz #{attempt.quiz_id}</span>
+                          )}
+                          {quiz && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {quiz.questions?.length || 0} questions • {quiz.difficulty || 'Medium'}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColor(attempt.score)}`}>
+                          {attempt.score.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {formatTime(attempt.time_taken)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {new Date(attempt.completed_at).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <Link
+                          to={`/quiz/${attempt.quiz_id}/results/${attempt._id}`}
+                          className="inline-flex items-center text-blue-600 hover:text-blue-700"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Results
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t">
+              <div className="text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

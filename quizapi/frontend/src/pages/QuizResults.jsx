@@ -12,18 +12,22 @@ const QuizResults = () => {
 
   const fetchResults = useCallback(async () => {
     try {
-      console.log('Fetching results for attempt:', attemptId)
+      console.log('Fetching results for attempt:', attemptId, 'quiz:', quizId)
 
       const [resultsData, quizData] = await Promise.all([
         quizService.getAttemptById(attemptId),
         quizService.getQuizById(quizId)
       ])
 
+      console.log('Results data:', resultsData)
+      console.log('Quiz data:', quizData)
+
       if (resultsData.success && quizData.success) {
         setResults(resultsData.data)
         setQuiz(quizData.data)
       } else {
-        toast.error('Failed to load quiz results')
+        console.error('Failed to fetch data:', { resultsData, quizData })
+        toast.error(resultsData.error || quizData.error || 'Failed to load quiz results')
       }
     } catch (error) {
       console.error('Error fetching results:', error)

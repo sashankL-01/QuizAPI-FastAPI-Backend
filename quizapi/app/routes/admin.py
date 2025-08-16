@@ -273,3 +273,74 @@ async def admin_delete_quiz(
     result = await db.quizzes.delete_one({"_id": ObjectId(quiz_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Quiz not found")
+
+# Dashboard Endpoints
+@router.get("/dashboard")
+async def admin_get_dashboard_stats(
+    current_admin: user.User = Depends(get_current_admin_user),
+    db: AsyncIOMotorClient = Depends(get_db)
+):
+    """Get comprehensive dashboard statistics for admin"""
+    try:
+        # Get basic counts
+        total_users = await db.users.count_documents({})
+        total_quizzes = await db.quizzes.count_documents({})
+        total_attempts = await db.attempts.count_documents({})
+
+        # Get advanced statistics
+        user_stats_pipeline = [
+            {
+                "$group": {
+                    "_id": None,
+                    "avg_score": {"$avg": "$score"},
+                    "total_time": {"$sum": "$time_taken"}
+                }
+            }
+        ]
+
+        attempt_stats = await db.attempts.aggregate(user_stats_pipeline).to_list(1)
+        avg_score = attempt_stats[0]["avg_score"] if attempt_stats else 0
+        total_minutes = (attempt_stats[0]["total_time"] or 0) / 60 if attempt_stats else 0
+
+        # Calculate averages
+        avg_attempts_per_user = total_attempts / total_users if total_users > 0 else 0
+        avg_attempts_per_quiz = total_attempts / total_quizzes if total_quizzes > 0 else 0
+
+        # User engagement (users who have taken at least one quiz)
+        engaged_users = len(await db.attempts.distinct("user_id"))
+        user_engagement = (engaged_users / total_users * 100) if total_users > 0 else 0
+
+        # Recent activity data for charts
+        recent_attempts_pipeline = [
+            {
+                "$group": {
+                    "_id": {
+                        "$dateToString": {
+                            "format": "%Y-%m-%d",
+                            "date": "$completed_at"
+                        }
+                    },
+                    "count": {"$sum": 1},
+                    "avg_score": {"$avg": "$score"}
+                }
+            },
+            {"$sort": {"_id": -1}},
+            {"$limit": 7}
+        ]
+
+        recent_activity = await db.attempts.aggregate(recent_attempts_pipeline).to_list(7)
+
+        return {
+            "total_users": total_users,
+            "total_quizzes": total_quizzes,
+            "total_attempts": total_attempts,
+            "total_minutes_taken": round(total_minutes, 2),
+            "avg_score_percentage": round(avg_score, 2) if avg_score else 0,
+            "avg_attempts_per_user": round(avg_attempts_per_user, 2),
+            "avg_attempts_per_quiz": round(avg_attempts_per_quiz, 2),
+            "user_engagement": round(user_engagement, 2),
+            "recent_activity": recent_activity
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch dashboard stats: {str(e)}")

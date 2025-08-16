@@ -28,3 +28,16 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str = Field(..., description="Password reset token")
     new_password: str = Field(..., min_length=8, description="New password")
+
+class TokenPayload(BaseModel):
+    sub: str
+    email: Optional[EmailStr] = None
+    is_admin: Optional[bool] = None
+    exp: Optional[int] = None
+
+class UserResponse(BaseModel):
+    id: str
+    email: EmailStr
+    full_name: str
+    is_admin: bool
+    is_active: bool
