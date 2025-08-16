@@ -14,7 +14,7 @@ async def submit_attempt(attempt_: attempt.AttemptCreate, db: AsyncIOMotorClient
     correct_answers = [q["correct_option"] for q in quiz["questions"]]
     score = sum(1 for i, answer in enumerate(attempt_.answers) if answer == correct_answers[i]) / len(correct_answers) * 100
 
-    attempt_dict = attempt_.dict()
+    attempt_dict = attempt_.model_dump()
     attempt_dict["score"] = score
     result = await db.attempts.insert_one(attempt_dict)
     created_attempt = await db.attempts.find_one({"_id": result.inserted_id})

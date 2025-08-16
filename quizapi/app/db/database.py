@@ -1,4 +1,4 @@
-import connection
+from . import connection
 from .connection import db_manager
 
 async def get_db(): #provides the database connection to the FastAPI app
