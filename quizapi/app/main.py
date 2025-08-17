@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from .db.connection import close_mongo_connection, connect_to_mongo, db_manager
 from .db.init_db import initialize_database
 from .routes import quizzes, questions, attempts, admin, auth, users, change_password
+import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,10 +21,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
 origins = [
     "http://localhost:3000",
-    "FRONTEND_URL",
+    frontend_url,
+    "https://quizapi-git-main-sashankl-01s-projects.vercel.app"
 ]
+
+print(f"Allowed CORS origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
