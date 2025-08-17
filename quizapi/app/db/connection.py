@@ -13,19 +13,20 @@ db_manager = DB()
 async def connect_to_mongo():
     print("Connecting to MongoDB...")
     settings = get_settings()
-
     ca = certifi.where()
 
     client_options = {
         "tls": True,
-        "tlsCAFile": ca,  # Use the certifi CA bundle for verification
+        "tlsCAFile": ca,
+        "tlsVersion": "TLSv1.2",  # Explicitly set TLS version
         "retryWrites": True,
-        "serverSelectionTimeoutMS": 30000  # Increase timeout to 30 seconds
+        "serverSelectionTimeoutMS": 30000
     }
 
     try:
         db_manager.client = AsyncIOMotorClient(settings.mongodb_url, **client_options)
         db_manager.db = db_manager.client[settings.mongodb_database]
+        # Verify connection
         await db_manager.db.command("ping")
         print("Successfully connected to MongoDB!")
     except Exception as e:
