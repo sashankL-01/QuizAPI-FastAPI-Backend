@@ -25,7 +25,6 @@ async def connect_to_mongo():
     try:
         db_manager.client = AsyncIOMotorClient(settings.mongodb_url, **client_options)
         db_manager.db = db_manager.client[settings.mongodb_database]
-        # Verify connection
         await db_manager.db.command("ping")
         print("Successfully connected to MongoDB!")
     except Exception as e:
