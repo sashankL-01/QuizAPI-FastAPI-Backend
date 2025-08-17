@@ -20,10 +20,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow specific origins for CORS
 origins = [
-    "http://localhost:3000",             # Local development frontend
-    "https://quizapi-frontend.vercel.app", # Your Vercel frontend domain (replace with your actual domain)
+    "http://localhost:3000",
+    "FRONTEND_URL",
 ]
 
 app.add_middleware(
