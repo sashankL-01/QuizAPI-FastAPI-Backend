@@ -2,6 +2,7 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from ..utils.config import get_settings
 import ssl
+import certifi
 
 class DB: #mongodb client and database manager
     client: AsyncIOMotorClient = None
@@ -13,10 +14,11 @@ async def connect_to_mongo():
     print("Connecting to MongoDB...")
     settings = get_settings()
 
-    # Configure MongoDB client with SSL settings
+    ca = certifi.where()
+
     client_options = {
-        "ssl": True,
-        "tlsAllowInvalidCertificates": True,  # For development; set to False in production with proper certs
+        "tls": True,
+        "tlsCAFile": ca,  # Use the certifi CA bundle for verification
         "retryWrites": True,
         "serverSelectionTimeoutMS": 30000  # Increase timeout to 30 seconds
     }
@@ -24,7 +26,6 @@ async def connect_to_mongo():
     try:
         db_manager.client = AsyncIOMotorClient(settings.mongodb_url, **client_options)
         db_manager.db = db_manager.client[settings.mongodb_database]
-        # Verify connection with a simple operation
         await db_manager.db.command("ping")
         print("Successfully connected to MongoDB!")
     except Exception as e:
