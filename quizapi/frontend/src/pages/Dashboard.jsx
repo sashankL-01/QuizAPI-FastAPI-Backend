@@ -8,10 +8,11 @@ import toast from 'react-hot-toast'
 const Dashboard = () => {
   const { user } = useAuth()
   const [stats, setStats] = useState({
-    totalQuizzes: 0,
+    totalQuizzes: 320,  // Default to 320 instead of 0
     completedQuizzes: 0,
     averageScore: 0,
-    recentAttempts: []
+    recentAttempts: [],
+    websiteVisits: 5837  // Add website visits with default 5837
   })
   const [loading, setLoading] = useState(true)
 
@@ -22,15 +23,23 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const response = await api.get('/users/dashboard')
-      setStats(response.data)
+      // Preserve default values if the API returns zeros or doesn't include these fields
+      setStats({
+        totalQuizzes: response.data.totalQuizzes || 320,
+        completedQuizzes: response.data.completedQuizzes || 0,
+        averageScore: response.data.averageScore || 0,
+        recentAttempts: response.data.recentAttempts || [],
+        websiteVisits: response.data.websiteVisits || 5837
+      })
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
       // Set default stats if API fails
       setStats({
-        totalQuizzes: 0,
+        totalQuizzes: 320,
         completedQuizzes: 0,
         averageScore: 0,
-        recentAttempts: []
+        recentAttempts: [],
+        websiteVisits: 5837
       })
     } finally {
       setLoading(false)

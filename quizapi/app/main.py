@@ -25,8 +25,8 @@ frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
 origins = [
     "http://localhost:3000",
-    frontend_url,
-    "https://quizapi-git-main-sashankl-01s-projects.vercel.app",
+    FRONTEND_URL,
+
 ]
 
 print(f"Allowed CORS origins: {origins}")
