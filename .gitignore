@@ -13,6 +13,8 @@ __pycache__/
 .venv/
 venv/
 ENV/
+.env.production
+.env.example
 
 # IDE files
 .idea/
