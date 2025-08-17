@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// Base API configuration - pointing to FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-// Create axios instance with default configuration
+console.log('API BASE URL:', API_BASE_URL); // Debug log to see what URL is being used
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
@@ -12,7 +12,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
@@ -26,7 +25,6 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh and errors
 api.interceptors.response.use(
   (response) => {
     return response;
