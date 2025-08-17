@@ -1,6 +1,7 @@
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from ..utils.config import get_settings
+import ssl
 
 class DB: #mongodb client and database manager
     client: AsyncIOMotorClient = None
@@ -11,9 +12,24 @@ db_manager = DB()
 async def connect_to_mongo():
     print("Connecting to MongoDB...")
     settings = get_settings()
-    db_manager.client = AsyncIOMotorClient(settings.mongodb_url)
-    db_manager.db = db_manager.client[settings.mongodb_database]
-    print("Successfully connected to MongoDB!")
+
+    # Configure MongoDB client with SSL settings
+    client_options = {
+        "ssl": True,
+        "tlsAllowInvalidCertificates": True,  # For development; set to False in production with proper certs
+        "retryWrites": True,
+        "serverSelectionTimeoutMS": 30000  # Increase timeout to 30 seconds
+    }
+
+    try:
+        db_manager.client = AsyncIOMotorClient(settings.mongodb_url, **client_options)
+        db_manager.db = db_manager.client[settings.mongodb_database]
+        # Verify connection with a simple operation
+        await db_manager.db.command("ping")
+        print("Successfully connected to MongoDB!")
+    except Exception as e:
+        print(f"MongoDB connection error: {e}")
+        raise
 
 async def close_mongo_connection():
     print("Closing MongoDB connection...")
