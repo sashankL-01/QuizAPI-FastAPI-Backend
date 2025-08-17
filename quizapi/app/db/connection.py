@@ -18,7 +18,6 @@ async def connect_to_mongo():
     client_options = {
         "tls": True,
         "tlsCAFile": ca,
-        "tlsVersion": "TLSv1.2",  # Explicitly set TLS version
         "retryWrites": True,
         "serverSelectionTimeoutMS": 30000
     }
