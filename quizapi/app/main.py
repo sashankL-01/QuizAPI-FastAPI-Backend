@@ -23,20 +23,25 @@ app = FastAPI(
 
 frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
+# Use actual URLs instead of placeholders
 origins = [
     "http://localhost:3000",
     frontend_url,
-    "https://quizapi-git-main-sashankl-01s-projects.vercel.app"
+    "https://quizapi-git-main-sashankl-01s-projects.vercel.app",
+    # Add the actual Render URL - remove the placeholder text below and use your real URL
+    "https://quizapi-fastapi-backend-url.onrender.com"
 ]
 
-print(f"Allowed CORS origins: {origins}")
+print(f"Allowed CORS origins: {origins}")  # Log the allowed origins for debugging
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Temporarily allow all origins for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,  # Cache preflight requests for 24 hours
 )
 
 
