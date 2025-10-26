@@ -25,15 +25,14 @@ frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
 origins = [
     "http://localhost:3000",
-    FRONTEND_URL,
-
+    frontend_url,
 ]
 
 print(f"Allowed CORS origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,  # Changed from ["*"] to use the origins list
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

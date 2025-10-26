@@ -6,7 +6,6 @@ const AdminRoute = ({ children }) => {
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
-  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -15,17 +14,14 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  // If not authenticated, redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If not admin, redirect to dashboard with error message
   if (!user?.is_admin) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // If authenticated and admin, render the protected component
   return children;
 };
 

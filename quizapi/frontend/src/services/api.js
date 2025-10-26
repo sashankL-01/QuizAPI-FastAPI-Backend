@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-console.log('API BASE URL:', API_BASE_URL); // Debug log to see what URL is being used
+console.log('API BASE URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -35,7 +35,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // Try to refresh token
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
@@ -46,17 +45,14 @@ api.interceptors.response.use(
           const { access_token } = response.data;
           localStorage.setItem('access_token', access_token);
 
-          // Retry original request with new token
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return api(originalRequest);
         } catch (refreshError) {
-          // Refresh failed, redirect to login
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           window.location.href = '/login';
         }
       } else {
-        // No refresh token, redirect to login
         window.location.href = '/login';
       }
     }

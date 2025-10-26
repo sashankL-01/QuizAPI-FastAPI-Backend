@@ -1,37 +1,28 @@
-# Ignore sample data creation script
 create_sample_quizzes.py
 
-# Ignore tests directory
 /tests/
 
-# Python cache files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual Environment
 .venv/
 venv/
 ENV/
 .env.production
 .env.example
 
-# IDE files
 .idea/
 .vscode/
 
-# Environment variables
 .env
 
-# Distribution / packaging
 dist/
 build/
 *.egg-info/
 
-# Sample files and documentation
 USER_MANAGEMENT.md
 AUTHENTICATION.md
 todo.txt
 
-# Node.js dependencies
 node_modules/

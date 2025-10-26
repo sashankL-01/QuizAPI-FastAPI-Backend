@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import authService from '../services/authService.js';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -16,17 +17,36 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in on app start
     const initializeAuth = async () => {
       try {
         const currentUser = authService.getCurrentUser();
         const token = authService.getAccessToken();
 
         if (currentUser && token) {
-          setUser(currentUser);
-          setIsAuthenticated(true);
+          const verifyResult = await authService.verifyToken();
+          if (verifyResult.success) {
+            setUser(verifyResult.user || currentUser);
+            setIsAuthenticated(true);
+          } else {
+            try {
+              await authService.refreshToken();
+              const reverify = await authService.verifyToken();
+              if (reverify.success) {
+                setUser(reverify.user || currentUser);
+                setIsAuthenticated(true);
+              } else {
+                throw new Error('Re-verify failed');
+              }
+            } catch (err) {
+              authService.logout();
+              setUser(null);
+              setIsAuthenticated(false);
+              navigate('/dashboard', { replace: true });
+            }
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
